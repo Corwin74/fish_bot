@@ -2,9 +2,10 @@ import logging
 
 import redis
 from environs import Env
-from telegram import ReplyKeyboardMarkup
-from telegram.ext import (CommandHandler, ConversationHandler, Filters,
-                          MessageHandler, Updater)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (CommandHandler, ConversationHandler,
+                          CallbackQueryHandler, Filters, MessageHandler,
+                          Updater)
 
 from tlgm_logger import TlgmLogsHandler
 
@@ -15,10 +16,22 @@ logger = logging.getLogger(__file__)
 
 def start(update, context):
     user = update.effective_user
-    update.message.reply_markdown_v2(
-        fr'Здравствуйте {user.mention_markdown_v2()}\! Я бот для викторин\!',
-    )
+    keyboard = [[InlineKeyboardButton("Option 1", callback_data='1'),
+                 InlineKeyboardButton("Option 2", callback_data='2')],
+
+                [InlineKeyboardButton("Option 3", callback_data='3')]]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text(
+                              'Please choose:',
+                              reply_markup=reply_markup)
     return ECHO
+
+
+def button(update, context):
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(text=f"Selected option: {query.data}")
 
 
 def handle_echo(update, context):
@@ -75,6 +88,7 @@ def main():
     )
 
     dispatcher.add_handler(conv_handler)
+    dispatcher.add_handler(CallbackQueryHandler(button))
 
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',

@@ -57,4 +57,4 @@ if __name__ == "__main__":
     env = Env()
     env.read_env()
     motlin_client_id = env('MOTLIN_CLIENT_ID')
-    print(add_product_to_cart(get_token(motlin_client_id), "4", 3))
+    print(get_products(get_token(motlin_client_id), "4", 3))
