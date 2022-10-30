@@ -8,36 +8,52 @@ from telegram.ext import (CommandHandler, ConversationHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
+from motlin_api import get_products, get_token
 
-ECHO = (1,)
+HANDLE_MENU, HANDLE_PRODUCT = (1, 2)
 
 logger = logging.getLogger(__file__)
 
 
-def start(update, context):
+def handle_menu(update, context):
     user = update.effective_user
-    keyboard = [[InlineKeyboardButton("Option 1", callback_data='1'),
-                 InlineKeyboardButton("Option 2", callback_data='2')],
-
-                [InlineKeyboardButton("Option 3", callback_data='3')]]
-
+    motlin_access_token = context.bot_data['motlin_access_token']
+    keyboard = []
+    products = get_products(motlin_access_token)
+    for product in products:
+        keyboard.append(
+                        [
+                            InlineKeyboardButton(
+                                product['attributes']['name'],
+                                callback_data=product['id']
+                            )
+                        ]
+                        )
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text(
-                              'Please choose:',
-                              reply_markup=reply_markup)
-    return ECHO
+    if update.callback_query:
+        query = update.callback_query
+        query.answer()
+        query.edit_message_text('Please choose:',
+                                reply_markup=reply_markup)
+    else:
+        update.message.reply_text(
+                                'Please choose:',
+                                reply_markup=reply_markup)
+    return HANDLE_PRODUCT
 
 
-def button(update, context):
+def handle_product(update, context):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text=f"Selected option: {query.data}")
+    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton('Назад', callback_data='back')]])
+    query.edit_message_text(text=f"Selected option: {query.data}", reply_markup=reply_markup)
+    return HANDLE_MENU
 
 
 def handle_echo(update, context):
     redis = context.bot_data['redis']
     update.message.reply_text(update.message.text)
-    return ECHO
+    return HANDLE_MENU
 
 
 def cancel(update, context):
@@ -58,6 +74,7 @@ def main():
     env = Env()
     env.read_env()
     tlgm_bot_token = env('TLGM_BOT_TOKEN')
+    motlin_client_id = env('MOTLIN_CLIENT_ID')
     redis_db_id = env('REDIS_DB_ID', default=0)
     redis_port = env('REDIS_PORT', default=6379)
     redis_host = env('REDIS_HOST', default='localhost')
@@ -73,22 +90,25 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.bot_data['redis'] = redis_db
+    dispatcher.bot_data['motlin_client_id'] = motlin_client_id
+    dispatcher.bot_data['motlin_access_token'] = get_token(motlin_client_id)
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', handle_menu)],
 
         states={
-            ECHO: [
+            HANDLE_MENU: [
                        MessageHandler(Filters.text & ~Filters.command,
-                                      handle_echo),
+                                      handle_menu),
+                       CallbackQueryHandler(handle_menu),
                       ],
+            HANDLE_PRODUCT: [CallbackQueryHandler(handle_product)],
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
     dispatcher.add_handler(conv_handler)
-    dispatcher.add_handler(CallbackQueryHandler(button))
 
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',

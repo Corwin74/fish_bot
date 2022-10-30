@@ -24,7 +24,18 @@ def get_products(access_token):
                             headers=headers,
     )
     response.raise_for_status()
-    return response.text
+    return response.json()['data']
+
+
+def get_product_stock(access_token, product_id):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(
+                        f'https://api.moltin.com/v2/inventories/{product_id}',
+                        headers=headers,
+    )
+    response.raise_for_status()
+    return response.json()
+
 
 
 def get_cart(access_token, cart_id='abc'):
@@ -53,8 +64,13 @@ def add_product_to_cart(access_token, product_sku, quantity, cart_id='abc'):
     return response.text
 
 
+def parse_products_catalog(response_text):
+    for product in response_text:
+        print(product['attributes']['name'], product['id'])
+
+
 if __name__ == "__main__":
     env = Env()
     env.read_env()
     motlin_client_id = env('MOTLIN_CLIENT_ID')
-    print(get_products(get_token(motlin_client_id), "4", 3))
+    print(get_product_stock(get_token(motlin_client_id), '2207166b-b995-4eff-97c5-f008d2094064'))
