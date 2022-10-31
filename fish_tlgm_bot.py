@@ -8,7 +8,7 @@ from telegram.ext import (CommandHandler, ConversationHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
-from motlin_api import get_products, get_token
+from motlin_api import get_products, get_token, get_product
 
 HANDLE_MENU, HANDLE_PRODUCT = (1, 2)
 
@@ -45,8 +45,14 @@ def handle_menu(update, context):
 def handle_product(update, context):
     query = update.callback_query
     query.answer()
-    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton('Назад', callback_data='back')]])
-    query.edit_message_text(text=f"Selected option: {query.data}", reply_markup=reply_markup)
+    motlin_access_token = context.bot_data['motlin_access_token']
+    product = get_product(motlin_access_token, query['data'])
+    reply_markup = InlineKeyboardMarkup(
+            [[InlineKeyboardButton('Назад', callback_data='back')]])
+    query.edit_message_text(
+                            text=product['attributes']['description'],
+                            reply_markup=reply_markup
+    )
     return HANDLE_MENU
 
 
@@ -75,6 +81,7 @@ def main():
     env.read_env()
     tlgm_bot_token = env('TLGM_BOT_TOKEN')
     motlin_client_id = env('MOTLIN_CLIENT_ID')
+    motline_client_secret_key = env('MOTLIN_CLIENT_SECRET_KEY')
     redis_db_id = env('REDIS_DB_ID', default=0)
     redis_port = env('REDIS_PORT', default=6379)
     redis_host = env('REDIS_HOST', default='localhost')
@@ -90,9 +97,14 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.bot_data['redis'] = redis_db
+    # Fix me Проверить есть ли необходимость в их хранении
     dispatcher.bot_data['motlin_client_id'] = motlin_client_id
-    dispatcher.bot_data['motlin_access_token'] = get_token(motlin_client_id)
-
+    dispatcher.bot_data['motlin_client_secret_key'] = motline_client_secret_key
+    # Fix me end
+    dispatcher.bot_data['motlin_access_token'] = get_token(
+                                                    motlin_client_id,
+                                                    motline_client_secret_key
+    )
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', handle_menu)],
 

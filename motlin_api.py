@@ -2,12 +2,12 @@ import requests
 from environs import Env
 
 
-def get_token(client_id):
+def get_token(client_id, client_secret_key):
     request_body = {
                 "client_id": client_id,
-                "grant_type": "implicit",
+                "client_secret": client_secret_key,
+                "grant_type": "client_credentials",
     }
-
     response = requests.post(
                     'https://api.moltin.com/oauth/access_token',
                     data=request_body,
@@ -64,6 +64,16 @@ def add_product_to_cart(access_token, product_sku, quantity, cart_id='abc'):
     return response.text
 
 
+def get_product(access_token, product_id):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(
+                    f'https://api.moltin.com/pcm/products/{product_id}',
+                    headers=headers,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def parse_products_catalog(response_text):
     for product in response_text:
         print(product['attributes']['name'], product['id'])
@@ -73,4 +83,5 @@ if __name__ == "__main__":
     env = Env()
     env.read_env()
     motlin_client_id = env('MOTLIN_CLIENT_ID')
-    print(get_product_stock(get_token(motlin_client_id), '2207166b-b995-4eff-97c5-f008d2094064'))
+    motline_client_secret_key = env('MOTLIN_CLIENT_SECRET_KEY')
+    print(get_product(get_token(motlin_client_id, motline_client_secret_key), '2207166b-b995-4eff-97c5-f008d2094064'))
