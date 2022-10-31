@@ -8,7 +8,7 @@ from telegram.ext import (CommandHandler, ConversationHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
-from motlin_api import get_products, get_token, get_product
+from motlin_api import get_products, get_token, get_product, get_product_price, get_product_stock
 
 HANDLE_MENU, HANDLE_PRODUCT = (1, 2)
 
@@ -47,10 +47,19 @@ def handle_product(update, context):
     query.answer()
     motlin_access_token = context.bot_data['motlin_access_token']
     product = get_product(motlin_access_token, query['data'])
+    product_name = product['attributes']['name']
+    product_description = product['attributes']['description']
+    product_sku = product['attributes']['sku']
+    price = get_product_price(motlin_access_token, product_sku)
+    amount = get_product_stock(motlin_access_token, query['data'])['available']
+    product_page = f'{product_name}\n\n'\
+                   f'Цена: {price["RUB"]["amount"]/100:.2f}₽.\n'\
+                   f'Количество: {amount}\n\n'\
+                   f'{product_description}'
     reply_markup = InlineKeyboardMarkup(
             [[InlineKeyboardButton('Назад', callback_data='back')]])
     query.edit_message_text(
-                            text=product['attributes']['description'],
+                            text=product_page,
                             reply_markup=reply_markup
     )
     return HANDLE_MENU

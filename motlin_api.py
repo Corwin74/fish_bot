@@ -34,8 +34,7 @@ def get_product_stock(access_token, product_id):
                         headers=headers,
     )
     response.raise_for_status()
-    return response.json()
-
+    return response.json()['data']
 
 
 def get_cart(access_token, cart_id='abc'):
@@ -71,17 +70,37 @@ def get_product(access_token, product_id):
                     headers=headers,
     )
     response.raise_for_status()
-    return response.json()
+    return response.json()['data']
 
 
-def parse_products_catalog(response_text):
-    for product in response_text:
-        print(product['attributes']['name'], product['id'])
+def get_first_pricebook(access_token):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(
+                    'https://api.moltin.com/pcm/catalogs',
+                    headers=headers,
+    )
+    response.raise_for_status()
+    pricebook_id = response.json()['data'][0]['attributes']['pricebook_id']
+    response = requests.get(
+                f'https://api.moltin.com/pcm/pricebooks/{pricebook_id}/prices',
+                headers=headers,
+    )
+    response.raise_for_status()
+    return response.json()['data']
+
+
+def get_product_price(access_token, product_sku):
+    for product in get_first_pricebook(access_token):
+        if product_sku == product['attributes']['sku']:
+            return product['attributes']['currencies']
 
 
 if __name__ == "__main__":
+    access_token = None
     env = Env()
     env.read_env()
     motlin_client_id = env('MOTLIN_CLIENT_ID')
     motline_client_secret_key = env('MOTLIN_CLIENT_SECRET_KEY')
-    print(get_product(get_token(motlin_client_id, motline_client_secret_key), '2207166b-b995-4eff-97c5-f008d2094064'))
+    if not access_token:
+        access_token = get_token(motlin_client_id, motline_client_secret_key)
+    print(get_product_stock(access_token, '35b6d123-9d11-4d76-9561-057c1595fcab'))
