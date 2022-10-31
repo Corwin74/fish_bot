@@ -8,7 +8,7 @@ from telegram.ext import (CommandHandler, ConversationHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
-from motlin_api import get_products, get_token, get_product, get_product_price, get_product_stock
+from motlin_api import get_products, get_token, get_product, get_product_price, get_product_stock, get_product_photo_link
 
 HANDLE_MENU, HANDLE_PRODUCT = (1, 2)
 
@@ -58,9 +58,14 @@ def handle_product(update, context):
                    f'{product_description}'
     reply_markup = InlineKeyboardMarkup(
             [[InlineKeyboardButton('Назад', callback_data='back')]])
-    query.edit_message_text(
-                            text=product_page,
-                            reply_markup=reply_markup
+    query.delete_message(
+    )
+    photo = get_product_photo_link(motlin_access_token, product["relationships"]["main_image"]["data"]['id'])
+    context.bot.send_photo(
+                           chat_id=update['callback_query']['from_user']['id'],
+                           photo=photo,
+                           caption=product_page,
+                           reply_markup=reply_markup,
     )
     return HANDLE_MENU
 

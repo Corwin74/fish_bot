@@ -27,6 +27,16 @@ def get_products(access_token):
     return response.json()['data']
 
 
+def get_product_photo_link(access_token, image_id):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(
+                            f'https://api.moltin.com/v2/files/{image_id}',
+                            headers=headers,
+    )
+    response.raise_for_status()
+    return response.json()['data']['link']['href']
+
+
 def get_product_stock(access_token, product_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
@@ -96,11 +106,12 @@ def get_product_price(access_token, product_sku):
 
 
 if __name__ == "__main__":
-    access_token = None
+    access_token = '0bff52fbfc81825d017512526bef54d0c5bb2858'
     env = Env()
     env.read_env()
     motlin_client_id = env('MOTLIN_CLIENT_ID')
     motline_client_secret_key = env('MOTLIN_CLIENT_SECRET_KEY')
     if not access_token:
         access_token = get_token(motlin_client_id, motline_client_secret_key)
-    print(get_product_stock(access_token, '35b6d123-9d11-4d76-9561-057c1595fcab'))
+    print(access_token)
+    print(get_product(access_token, '35b6d123-9d11-4d76-9561-057c1595fcab'))
