@@ -8,14 +8,14 @@ from telegram.ext import (CommandHandler, ConversationHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
-from motlin_api import get_products, get_token, get_product, get_product_price, get_product_stock, get_product_photo_link
+from motlin_api import get_cart, get_products, get_token, get_product, get_product_price, get_product_stock, get_product_photo_link, add_product_to_cart
 
-HANDLE_MENU, HANDLE_PRODUCT = (1, 2)
+DISPLAY_MENU, HANDLE_MENU, HANDLE_PRODUCT, HANDLE_CART = (1, 2, 3, 4)
 
 logger = logging.getLogger(__file__)
 
 
-def handle_menu(update, context):
+def display_menu(update, context):
     user = update.effective_user
     motlin_access_token = context.bot_data['motlin_access_token']
     keyboard = []
@@ -33,16 +33,20 @@ def handle_menu(update, context):
     if update.callback_query:
         query = update.callback_query
         query.answer()
-        query.edit_message_text('Please choose:',
-                                reply_markup=reply_markup)
+        query.delete_message()
+        context.bot.send_message(
+                update['callback_query']['from_user']['id'],
+                'Please choose:',
+                reply_markup=reply_markup
+        )
     else:
         update.message.reply_text(
                                 'Please choose:',
                                 reply_markup=reply_markup)
-    return HANDLE_PRODUCT
+    return HANDLE_MENU
 
 
-def handle_product(update, context):
+def handle_menu(update, context):
     query = update.callback_query
     query.answer()
     motlin_access_token = context.bot_data['motlin_access_token']
@@ -57,28 +61,80 @@ def handle_product(update, context):
                    f'Количество: {amount}\n\n'\
                    f'{product_description}'
     reply_markup = InlineKeyboardMarkup(
-            [[InlineKeyboardButton('Назад', callback_data='back')]])
-    query.delete_message(
+     [
+        [
+         InlineKeyboardButton('1 кг.', callback_data=f'kg_1_{product_sku}'),
+         InlineKeyboardButton('5 кг.', callback_data=f'kg_5_{product_sku}'),
+         InlineKeyboardButton('10 кг.', callback_data=f'kg_10_{product_sku}'),
+        ],
+        [
+         InlineKeyboardButton('Назад', callback_data='back')
+        ],
+        [
+         InlineKeyboardButton('Корзина', callback_data='cart')
+        ],
+     ])
+    query.delete_message()
+    photo = get_product_photo_link(
+                        motlin_access_token,
+                        product["relationships"]["main_image"]["data"]['id']
     )
-    photo = get_product_photo_link(motlin_access_token, product["relationships"]["main_image"]["data"]['id'])
     context.bot.send_photo(
                            chat_id=update['callback_query']['from_user']['id'],
                            photo=photo,
                            caption=product_page,
                            reply_markup=reply_markup,
     )
-    return HANDLE_MENU
+    return HANDLE_PRODUCT
 
 
-def handle_echo(update, context):
-    redis = context.bot_data['redis']
-    update.message.reply_text(update.message.text)
-    return HANDLE_MENU
+def handle_product(update, context):
+    query = update.callback_query
+    query.answer()
+    motlin_access_token = context.bot_data['motlin_access_token']
+    _, amount, product_sku = query['data'].split('_')
+    client_id = query['from_user']['id']
+    add_product_to_cart(
+                        motlin_access_token,
+                        product_sku,
+                        amount,
+                        client_id,
+    )
+    return HANDLE_PRODUCT
 
 
 def cancel(update, context):
     update.message.reply_text('До следующих встреч!')
     return ConversationHandler.END
+
+
+def handle_cart(update, context):
+    query = update.callback_query
+    query.answer()
+    query.delete_message()
+    motlin_access_token = context.bot_data['motlin_access_token']
+    client_id = query['from_user']['id']
+    reply_markup = InlineKeyboardMarkup(
+     [
+        [
+         InlineKeyboardButton('1 кг.', callback_data='kg_1'),
+         InlineKeyboardButton('5 кг.', callback_data='kg_5'),
+         InlineKeyboardButton('10 кг.', callback_data='kg_10'),
+        ],
+        [
+         InlineKeyboardButton('Назад', callback_data='back')
+        ],
+        [
+         InlineKeyboardButton('Корзина', callback_data='cart')
+        ],
+     ])
+    text = get_cart(motlin_access_token, client_id)
+    context.bot.send_message(
+        update['callback_query']['from_user']['id'],
+        text,
+        reply_markup=reply_markup,
+    )
+    return HANDLE_CART
 
 
 def error_handler(update, context):
@@ -120,15 +176,24 @@ def main():
                                                     motline_client_secret_key
     )
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', handle_menu)],
+        entry_points=[CommandHandler('start', display_menu)],
 
         states={
-            HANDLE_MENU: [
+            DISPLAY_MENU: [
                        MessageHandler(Filters.text & ~Filters.command,
-                                      handle_menu),
-                       CallbackQueryHandler(handle_menu),
+                                      display_menu),
+                       CallbackQueryHandler(display_menu),
                       ],
-            HANDLE_PRODUCT: [CallbackQueryHandler(handle_product)],
+            HANDLE_MENU: [CallbackQueryHandler(handle_menu)],
+            HANDLE_PRODUCT: [
+                             CallbackQueryHandler(display_menu, pattern='back'),
+                             CallbackQueryHandler(handle_cart, pattern='cart'),
+                             CallbackQueryHandler(handle_product),
+                            ],
+            HANDLE_CART:  [
+                             CallbackQueryHandler(display_menu, pattern='back'),
+                             CallbackQueryHandler(handle_cart),
+                          ],
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]

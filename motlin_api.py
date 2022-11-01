@@ -55,7 +55,7 @@ def get_cart(access_token, cart_id='abc'):
     return response.text
 
 
-def add_product_to_cart(access_token, product_sku, quantity, cart_id='abc'):
+def add_product_to_cart(access_token, product_sku, quantity, cart_id):
     headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json"
@@ -65,7 +65,7 @@ def add_product_to_cart(access_token, product_sku, quantity, cart_id='abc'):
                     "data": {
                         "sku": product_sku,
                         "type": "cart_item",
-                        "quantity": quantity,
+                        "quantity": int(quantity),
                     }
     }
     response = requests.post(url, headers=headers, json=json_data)
@@ -106,7 +106,7 @@ def get_product_price(access_token, product_sku):
 
 
 if __name__ == "__main__":
-    access_token = '0bff52fbfc81825d017512526bef54d0c5bb2858'
+    access_token = None
     env = Env()
     env.read_env()
     motlin_client_id = env('MOTLIN_CLIENT_ID')
@@ -114,4 +114,4 @@ if __name__ == "__main__":
     if not access_token:
         access_token = get_token(motlin_client_id, motline_client_secret_key)
     print(access_token)
-    print(get_product(access_token, '35b6d123-9d11-4d76-9561-057c1595fcab'))
+    print(add_product_to_cart(access_token, 5, 3))
