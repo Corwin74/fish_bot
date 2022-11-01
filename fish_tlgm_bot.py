@@ -2,21 +2,22 @@ import logging
 
 import redis
 from environs import Env
+from email_validate import validate
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (CommandHandler, ConversationHandler,
                           CallbackQueryHandler, Filters, MessageHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
-from motlin_api import get_cart, get_products, get_token, get_product, get_product_price, get_product_stock, get_product_photo_link, add_product_to_cart
+from motlin_api import create_customer, get_cart_cost, get_cart_items, get_products, get_token, get_product, get_product_price, get_product_stock, get_product_photo_link, add_product_to_cart, remove_product_from_cart
 
-DISPLAY_MENU, HANDLE_MENU, HANDLE_PRODUCT, HANDLE_CART = (1, 2, 3, 4)
+DISPLAY_MENU, HANDLE_MENU, HANDLE_PRODUCT, \
+        HANDLE_CART, WAITING_EMAIL = (1, 2, 3, 4, 5)
 
 logger = logging.getLogger(__file__)
 
 
 def display_menu(update, context):
-    user = update.effective_user
     motlin_access_token = context.bot_data['motlin_access_token']
     keyboard = []
     products = get_products(motlin_access_token)
@@ -41,7 +42,7 @@ def display_menu(update, context):
         )
     else:
         update.message.reply_text(
-                                'Please choose:',
+                                'Сегодня в ассортименте:',
                                 reply_markup=reply_markup)
     return HANDLE_MENU
 
@@ -114,27 +115,69 @@ def handle_cart(update, context):
     query.delete_message()
     motlin_access_token = context.bot_data['motlin_access_token']
     client_id = query['from_user']['id']
-    reply_markup = InlineKeyboardMarkup(
-     [
-        [
-         InlineKeyboardButton('1 кг.', callback_data='kg_1'),
-         InlineKeyboardButton('5 кг.', callback_data='kg_5'),
-         InlineKeyboardButton('10 кг.', callback_data='kg_10'),
-        ],
-        [
-         InlineKeyboardButton('Назад', callback_data='back')
-        ],
-        [
-         InlineKeyboardButton('Корзина', callback_data='cart')
-        ],
-     ])
-    text = get_cart(motlin_access_token, client_id)
+    if query['data'] == 'email':
+        context.bot.send_message(
+            client_id,
+            'Для оформления заказа укажите адрес электронной почты:',
+        )
+        return WAITING_EMAIL
+    if not query['data'] == 'cart':
+        _, item_id = query['data'].split('_')
+        remove_product_from_cart(
+                                 motlin_access_token,
+                                 client_id,
+                                 item_id
+        )
+    menu_buttons = []
+    message_text = ""
+    for item in get_cart_items(motlin_access_token, client_id):
+        menu_buttons.append(
+                    [
+                        InlineKeyboardButton(
+                            f'{item["name"]} - удалить из корзины',
+                            callback_data=f'delete_{item["id"]}',
+                        )
+                    ]
+        )
+        message_text += f'{item["name"]}\n'\
+            f'{item["meta"]["display_price"]["with_tax"]["unit"]["formatted"]} за кг.\n'\
+            f'В корзине {item["quantity"]} кг. на сумму: {item["meta"]["display_price"]["with_tax"]["value"]["formatted"]}\n\n'
+    if len(message_text):
+        message_text += f'Общая сумма заказа: {get_cart_cost(motlin_access_token, client_id)}\n'
+    else:
+        message_text = "Корзина пуста"
+    menu_buttons.append(
+            [InlineKeyboardButton('В меню', callback_data='back')]
+    )
+    menu_buttons.append(
+            [InlineKeyboardButton('Оформить заказ', callback_data='email')]
+    )
+    reply_markup = InlineKeyboardMarkup(menu_buttons)
     context.bot.send_message(
-        update['callback_query']['from_user']['id'],
-        text,
-        reply_markup=reply_markup,
+                             client_id,
+                             message_text,
+                             reply_markup=reply_markup,
     )
     return HANDLE_CART
+
+
+def handle_email(update, context):
+    motlin_access_token = context.bot_data['motlin_access_token']
+    message = update.message.to_dict()
+    print(update.message.entities.text)
+    create_customer(
+                    motlin_access_token,
+                    message['from'],
+                    message['text']
+    )
+    update.message.reply_text('Спасибо за заказ!')
+    return ConversationHandler.END
+
+
+def wrong_email(update, context):
+    update.message.reply_text(
+            'Неправильный формат email адреса. Попробуйте еще раз')
+    return WAITING_EMAIL
 
 
 def error_handler(update, context):
@@ -180,20 +223,25 @@ def main():
 
         states={
             DISPLAY_MENU: [
-                       MessageHandler(Filters.text & ~Filters.command,
-                                      display_menu),
-                       CallbackQueryHandler(display_menu),
+                        MessageHandler(Filters.text & ~Filters.command,
+                                       display_menu),
+                        CallbackQueryHandler(display_menu),
                       ],
             HANDLE_MENU: [CallbackQueryHandler(handle_menu)],
             HANDLE_PRODUCT: [
-                             CallbackQueryHandler(display_menu, pattern='back'),
-                             CallbackQueryHandler(handle_cart, pattern='cart'),
-                             CallbackQueryHandler(handle_product),
+                        CallbackQueryHandler(display_menu, pattern='back'),
+                        CallbackQueryHandler(handle_cart, pattern='cart'),
+                        CallbackQueryHandler(handle_product),
                             ],
             HANDLE_CART:  [
-                             CallbackQueryHandler(display_menu, pattern='back'),
-                             CallbackQueryHandler(handle_cart),
+                        CallbackQueryHandler(display_menu, pattern='back'),
+                        CallbackQueryHandler(handle_cart),
                           ],
+            WAITING_EMAIL:  [
+                        MessageHandler(Filters.entity('email'), handle_email),
+                        MessageHandler(Filters.text & ~Filters.command,
+                                       wrong_email),
+                            ]
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]
