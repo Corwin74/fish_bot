@@ -1,13 +1,12 @@
 ## Продаём рыбу в Telegram
 
 Это Telegram-бот для продажи рыбы.
-Требования
 
 Для запуска вам понадобится:
-
-    Python 3.6 или выше
-    Магазин с товарами в Elastic Path. 
-    Необходимо зарегистрировать бота и получить токен для доступа к API Телеграма. 
+Python 3.6 или выше
+Магазин с товарами в Elastic Path. 
+Необходимо зарегистрировать бота и получить токен для доступа к API Телеграма. 
+    
 ## Как установить
 Для начала работы необходимо:
 - Скопировать репозиторий к себе на компьютер:
@@ -31,17 +30,12 @@ pip install -r requirements.txt
 ## Запуск и использование
 Для запуска бота необходимо ввести команду:
 ```sh
-python quiz_tlgm.py
-```
-или
-```sh
-python quiz_vk.py
+python fish_tlgm_bot.py
 ```
 Оба бота начинают работу по команде /start и заканчивают по команде /cancel
 ## Deploy на VPS под Linux
 Необходимо на VPS выполнить все шаги описанные выше.  
 Для того чтобы запускать нашего бота при старте системы автоматически, воспользуемся системным менеджером `systemd`.
-Пример будет показан для бота `quiz_tlgm.py` и названия сервиса `bot.service`. Для второго бота выполнить аналогичные действия, но с другими именами.  
 Создадим файл `bot.service` в директории `/etc/systemd/system` :
 ```
 $ sudo touch /etc/systemd/system/bot.service
@@ -53,7 +47,7 @@ $ sudo nano /etc/systemd/system/bot.service
 и вставим следующее содержимое и сохраняем файл:
 ```
 [Unit]
-Description=Quiz telegram bot
+Description=Fish telegram bot
 After=syslog.target
 After=network.target
 
@@ -61,10 +55,10 @@ After=network.target
 Type=simple
 #Пользователя user заменить на актуального
 User=user
-# замените на свой путь к каталогу, где находится `boltun_tlgm.py`
-WorkingDirectory=/home/user/quiz_bot/
+# замените на свой путь к каталогу, где находится `fish_tlgm_bot.py`
+WorkingDirectory=/home/user/fish_bot/
 # замените на свои пути к виртуальному окружению и папке с ботом
-ExecStart=/home/envs/tlgm_env/bin/python3 /home/user/quiz_bot/quiz_tlgm.py
+ExecStart=/home/envs/tlgm_env/bin/python3 /home/user/fish_bot/fish_tlgm_bot.py
 RestartSec=10
 Restart=always
 
