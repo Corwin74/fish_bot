@@ -149,17 +149,17 @@ def handle_cart(update, context):
             f'{display_price["unit"]["formatted"]} за кг.\n'\
             f'В корзине {item["quantity"]} кг.'\
             f'на сумму: {display_price["value"]["formatted"]}\n\n'
+    menu_buttons.append(
+        [InlineKeyboardButton('В меню', callback_data='back')]
+    )
     if len(message_text):
         cart_cost = get_cart_cost(motlin_access_token, client_id)
         message_text += f'Общая сумма заказа: {cart_cost}\n'
+        menu_buttons.append(
+            [InlineKeyboardButton('Оформить заказ', callback_data='email')]
+        )
     else:
         message_text = "Корзина пуста"
-    menu_buttons.append(
-            [InlineKeyboardButton('В меню', callback_data='back')]
-    )
-    menu_buttons.append(
-            [InlineKeyboardButton('Оформить заказ', callback_data='email')]
-    )
     reply_markup = InlineKeyboardMarkup(menu_buttons)
     context.bot.send_message(
                              client_id,
