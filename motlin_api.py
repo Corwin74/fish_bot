@@ -1,5 +1,4 @@
 import requests
-from environs import Env
 
 
 def get_token(client_id, client_secret_key):
@@ -78,7 +77,7 @@ def add_product_to_cart(access_token, product_sku, quantity, cart_id):
     }
     response = requests.post(url, headers=headers, json=json_data)
     response.raise_for_status()
-    return response.text
+    return response.Json()['data']
 
 
 def remove_product_from_cart(access_token, cart_id, product_id):
@@ -87,7 +86,7 @@ def remove_product_from_cart(access_token, cart_id, product_id):
         headers={"Authorization": f"Bearer {access_token}"},
     )
     response.raise_for_status()
-    return response.json()
+    return response.json()['data']
 
 
 def get_product(access_token, product_id):
@@ -119,41 +118,32 @@ def get_first_pricebook(access_token):
 def get_product_price(access_token, product_sku):
     for product in get_first_pricebook(access_token):
         if product_sku == product['attributes']['sku']:
-            return product['attributes']['currencies']   
+            return product['attributes']['currencies']
 
 
 def create_customer(access_token, email, name):
     headers = {
                 "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
     }
     json_data = {
-                    "data": {
-                              "type": "customer",
-                              "name": name,
-                              "email": email,
-                            }
+                'data': {
+                    'type': 'customer',
+                    'name': name,
+                    'email': email,
                 }
+    }
     response = requests.post(
         "https://api.moltin.com/v2/customers",
         headers=headers,
-        data=json_data,
+        json=json_data,
     )
     response.raise_for_status()
+    return response.json()['data']
+
+
+def main():
+    pass
 
 
 if __name__ == "__main__":
-    access_token = '70e71dae51137df5bce6c46395830091e443afb9'
-    env = Env()
-    env.read_env()
-    motlin_client_id = env('MOTLIN_CLIENT_ID')
-    motline_client_secret_key = env('MOTLIN_CLIENT_SECRET_KEY')
-    if not access_token:
-        access_token = get_token(motlin_client_id, motline_client_secret_key)
-    print(access_token)
-    resp = get_cart_items(access_token, '213999118')
-    for product in resp:
-        print(product['name'])
-        print(product["quantity"])
-        print(product['meta']['display_price']["with_tax"]['unit']["formatted"])
-        print(product['meta']['display_price']["with_tax"]['value']["formatted"])
+    main()

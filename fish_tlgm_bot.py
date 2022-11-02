@@ -1,15 +1,19 @@
 import logging
 
-import redis
 from environs import Env
-from email_validate import validate
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (CommandHandler, ConversationHandler,
                           CallbackQueryHandler, Filters, MessageHandler,
                           Updater)
 
 from tlgm_logger import TlgmLogsHandler
-from motlin_api import create_customer, get_cart_cost, get_cart_items, get_products, get_token, get_product, get_product_price, get_product_stock, get_product_photo_link, add_product_to_cart, remove_product_from_cart
+from motlin_api import (
+                        create_customer, get_cart_cost, get_cart_items,
+                        get_products, get_token, get_product,
+                        get_product_price, get_product_stock,
+                        get_product_photo_link, add_product_to_cart,
+                        remove_product_from_cart,
+)
 
 DISPLAY_MENU, HANDLE_MENU, HANDLE_PRODUCT, \
         HANDLE_CART, WAITING_EMAIL = (1, 2, 3, 4, 5)
@@ -164,13 +168,14 @@ def handle_cart(update, context):
 def handle_email(update, context):
     motlin_access_token = context.bot_data['motlin_access_token']
     message = update.message.to_dict()
-    print(update.message.entities.text)
     create_customer(
                     motlin_access_token,
-                    message['from'],
-                    message['text']
+                    message['text'],
+                    message['from']['username'],
     )
-    update.message.reply_text('Спасибо за заказ!')
+    update.message.reply_text(
+        f'Спасибо за заказ! Вы указали электронный адрес: {message["text"]}'
+    )
     return ConversationHandler.END
 
 
@@ -195,25 +200,10 @@ def main():
     tlgm_bot_token = env('TLGM_BOT_TOKEN')
     motlin_client_id = env('MOTLIN_CLIENT_ID')
     motline_client_secret_key = env('MOTLIN_CLIENT_SECRET_KEY')
-    redis_db_id = env('REDIS_DB_ID', default=0)
-    redis_port = env('REDIS_PORT', default=6379)
-    redis_host = env('REDIS_HOST', default='localhost')
-    redis_db = redis.Redis(
-                           host=redis_host,
-                           port=redis_port,
-                           db=redis_db_id,
-                           charset="utf-8",
-                           decode_responses=True
-    )
 
     updater = Updater(tlgm_bot_token)
     dispatcher = updater.dispatcher
 
-    dispatcher.bot_data['redis'] = redis_db
-    # Fix me Проверить есть ли необходимость в их хранении
-    dispatcher.bot_data['motlin_client_id'] = motlin_client_id
-    dispatcher.bot_data['motlin_client_secret_key'] = motline_client_secret_key
-    # Fix me end
     dispatcher.bot_data['motlin_access_token'] = get_token(
                                                     motlin_client_id,
                                                     motline_client_secret_key
