@@ -96,7 +96,6 @@ def handle_menu(update, context):
 
 def handle_product(update, context):
     query = update.callback_query
-    query.answer()
     motlin_access_token = context.bot_data['motlin_access_token']
     _, amount, product_sku = query['data'].split('_')
     client_id = query['from_user']['id']
@@ -106,6 +105,7 @@ def handle_product(update, context):
                         amount,
                         client_id,
     )
+    query.answer(f'Добавлено {amount}кг.')
     return HANDLE_PRODUCT
 
 
