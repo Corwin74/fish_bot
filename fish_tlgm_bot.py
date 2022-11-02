@@ -9,8 +9,8 @@ from telegram.ext import (CommandHandler, ConversationHandler,
 
 from tlgm_logger import TlgmLogsHandler
 from motlin_api import (
-                        create_customer, get_cart_cost, get_cart_items, get_customer,
-                        get_products, get_token, get_product,
+                        create_customer, get_cart_cost, get_cart_items,
+                        get_customer, get_products, get_token, get_product,
                         get_product_price, get_product_stock,
                         get_product_photo_link, add_product_to_cart,
                         remove_product_from_cart,
