@@ -51,7 +51,8 @@ def get_cart_cost(access_token, cart_id):
     url = f'https://api.moltin.com/v2/carts/{cart_id}'
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    return response.json()['data']['meta']['display_price']["with_tax"]["formatted"]
+    display_price = response.json()['data']['meta']['display_price']
+    return display_price["with_tax"]["formatted"]
 
 
 def get_cart_items(access_token, cart_id):
@@ -77,7 +78,7 @@ def add_product_to_cart(access_token, product_sku, quantity, cart_id):
     }
     response = requests.post(url, headers=headers, json=json_data)
     response.raise_for_status()
-    return response.Json()['data']
+    return response.json()['data']
 
 
 def remove_product_from_cart(access_token, cart_id, product_id):

@@ -1,3 +1,4 @@
+import requests
 import logging
 
 from environs import Env
@@ -143,11 +144,14 @@ def handle_cart(update, context):
                         )
                     ]
         )
+        display_price = item["meta"]["display_price"]["with_tax"]
         message_text += f'{item["name"]}\n'\
-            f'{item["meta"]["display_price"]["with_tax"]["unit"]["formatted"]} за кг.\n'\
-            f'В корзине {item["quantity"]} кг. на сумму: {item["meta"]["display_price"]["with_tax"]["value"]["formatted"]}\n\n'
+            f'{display_price["unit"]["formatted"]} за кг.\n'\
+            f'В корзине {item["quantity"]} кг.'\
+            f'на сумму: {display_price["value"]["formatted"]}\n\n'
     if len(message_text):
-        message_text += f'Общая сумма заказа: {get_cart_cost(motlin_access_token, client_id)}\n'
+        cart_cost = get_cart_cost(motlin_access_token, client_id)
+        message_text += f'Общая сумма заказа: {cart_cost}\n'
     else:
         message_text = "Корзина пуста"
     menu_buttons.append(
@@ -187,6 +191,15 @@ def wrong_email(update, context):
 
 def error_handler(update, context):
     logger.exception('Exception', exc_info=context.error)
+    if isinstance(context.error, requests.exceptions.HTTPError):
+        if context.error.response.status_code == 401:
+            motlin_client_id = context.bot_data['motlin_client_id']
+            motline_client_secret_key = \
+                context.bot_data['motlin_client_secret_key']
+            context.bot_data['motlin_access_token'] = get_token(
+                                                    motlin_client_id,
+                                                    motline_client_secret_key
+                                                               )
 
 
 def main():
@@ -207,7 +220,10 @@ def main():
     dispatcher.bot_data['motlin_access_token'] = get_token(
                                                     motlin_client_id,
                                                     motline_client_secret_key
-    )
+                                                          )
+    dispatcher.bot_data['motlin_client_id'] = motlin_client_id
+    dispatcher.bot_data['motlin_client_secret_key'] = motline_client_secret_key
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', display_menu)],
 
@@ -251,7 +267,6 @@ def main():
                                      )
                       )
     dispatcher.add_error_handler(error_handler)
-
     updater.start_polling()
     updater.idle()
 
