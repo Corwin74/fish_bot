@@ -9,7 +9,7 @@ from telegram.ext import (CommandHandler, ConversationHandler,
 
 from tlgm_logger import TlgmLogsHandler
 from motlin_api import (
-                        create_customer, get_cart_cost, get_cart_items,
+                        create_customer, get_cart_cost, get_cart_items, get_customer,
                         get_products, get_token, get_product,
                         get_product_price, get_product_stock,
                         get_product_photo_link, add_product_to_cart,
@@ -172,13 +172,14 @@ def handle_cart(update, context):
 def handle_email(update, context):
     motlin_access_token = context.bot_data['motlin_access_token']
     message = update.message.to_dict()
-    create_customer(
+    response = create_customer(
                     motlin_access_token,
                     message['text'],
                     message['from']['username'],
     )
+    email = get_customer(motlin_access_token, response['id'])['email']
     update.message.reply_text(
-        f'Спасибо за заказ! Вы указали электронный адрес: {message["text"]}'
+        f'Спасибо за заказ! Вы указали электронный адрес: {email}'
     )
     return ConversationHandler.END
 

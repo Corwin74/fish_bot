@@ -142,6 +142,16 @@ def create_customer(access_token, email, name):
     return response.json()['data']
 
 
+def get_customer(access_token, customer_id):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(
+                    f'https://api.moltin.com/v2/customers/{customer_id}',
+                    headers=headers,
+    )
+    response.raise_for_status()
+    return response.json()['data']
+
+
 def main():
     pass
 
