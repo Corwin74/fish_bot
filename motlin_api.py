@@ -150,11 +150,3 @@ def get_customer(access_token, customer_id):
     )
     response.raise_for_status()
     return response.json()['data']
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()
