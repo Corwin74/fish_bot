@@ -77,7 +77,6 @@ def handle_menu(update, context):
          InlineKeyboardButton('Корзина', callback_data='cart')
         ],
      ])
-    query.delete_message()
     photo = get_product_photo_link(
         context,
         product["relationships"]["main_image"]["data"]['id']
@@ -88,6 +87,7 @@ def handle_menu(update, context):
         caption=product_page,
         reply_markup=reply_markup,
     )
+    query.delete_message()
     return HANDLE_PRODUCT
 
 
@@ -113,7 +113,6 @@ def cancel(update, context):
 def handle_cart(update, context):
     query = update.callback_query
     query.answer()
-    query.delete_message()
     client_id = query['from_user']['id']
     if query['data'] == 'email':
         context.bot.send_message(
@@ -161,6 +160,7 @@ def handle_cart(update, context):
         message_text,
         reply_markup=reply_markup,
     )
+    query.delete_message()
     return HANDLE_CART
 
 
