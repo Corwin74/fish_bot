@@ -1,4 +1,3 @@
-import requests
 import logging
 
 from environs import Env
@@ -23,9 +22,8 @@ logger = logging.getLogger(__file__)
 
 
 def display_menu(update, context):
-    motlin_access_token = context.bot_data['motlin_access_token']
     keyboard = []
-    products = get_products(motlin_access_token)
+    products = get_products(context)
     for product in products:
         keyboard.append(
             [
@@ -55,13 +53,12 @@ def display_menu(update, context):
 def handle_menu(update, context):
     query = update.callback_query
     query.answer()
-    motlin_access_token = context.bot_data['motlin_access_token']
-    product = get_product(motlin_access_token, query['data'])
+    product = get_product(context, query['data'])
     product_name = product['attributes']['name']
     product_description = product['attributes']['description']
     product_sku = product['attributes']['sku']
-    price = get_product_price(motlin_access_token, product_sku)
-    amount = get_product_stock(motlin_access_token, query['data'])['available']
+    price = get_product_price(context, product_sku)
+    amount = get_product_stock(context, query['data'])['available']
     product_page = f'{product_name}\n\n'\
                    f'Цена: {price["RUB"]["amount"]/100:.2f}₽.\n'\
                    f'Количество: {amount}\n\n'\
@@ -82,7 +79,7 @@ def handle_menu(update, context):
      ])
     query.delete_message()
     photo = get_product_photo_link(
-        motlin_access_token,
+        context,
         product["relationships"]["main_image"]["data"]['id']
     )
     context.bot.send_photo(
@@ -96,11 +93,10 @@ def handle_menu(update, context):
 
 def handle_product(update, context):
     query = update.callback_query
-    motlin_access_token = context.bot_data['motlin_access_token']
     _, amount, product_sku = query['data'].split('_')
     client_id = query['from_user']['id']
     add_product_to_cart(
-        motlin_access_token,
+        context,
         product_sku,
         amount,
         client_id,
@@ -118,7 +114,6 @@ def handle_cart(update, context):
     query = update.callback_query
     query.answer()
     query.delete_message()
-    motlin_access_token = context.bot_data['motlin_access_token']
     client_id = query['from_user']['id']
     if query['data'] == 'email':
         context.bot.send_message(
@@ -129,13 +124,13 @@ def handle_cart(update, context):
     if not query['data'] == 'cart':
         _, item_id = query['data'].split('_')
         remove_product_from_cart(
-            motlin_access_token,
+            context,
             client_id,
             item_id
         )
     menu_buttons = []
     message_text = ""
-    for item in get_cart_items(motlin_access_token, client_id):
+    for item in get_cart_items(context, client_id):
         menu_buttons.append(
             [
                 InlineKeyboardButton(
@@ -153,7 +148,7 @@ def handle_cart(update, context):
         [InlineKeyboardButton('В меню', callback_data='back')]
     )
     if len(message_text):
-        cart_cost = get_cart_cost(motlin_access_token, client_id)
+        cart_cost = get_cart_cost(context, client_id)
         message_text += f'Общая сумма заказа: {cart_cost}\n'
         menu_buttons.append(
             [InlineKeyboardButton('Оформить заказ', callback_data='email')]
@@ -170,14 +165,13 @@ def handle_cart(update, context):
 
 
 def handle_email(update, context):
-    motlin_access_token = context.bot_data['motlin_access_token']
     message = update.message.to_dict()
     response = create_customer(
-        motlin_access_token,
+        context,
         message['text'],
         message['from']['username'],
     )
-    email = get_customer(motlin_access_token, response['id'])['email']
+    email = get_customer(context, response['id'])['email']
     update.message.reply_text(
         f'Спасибо за заказ! Вы указали электронный адрес: {email}'
     )
@@ -192,15 +186,6 @@ def wrong_email(update, context):
 
 def error_handler(update, context):
     logger.exception('Exception', exc_info=context.error)
-    if isinstance(context.error, requests.exceptions.HTTPError):
-        if context.error.response.status_code == 401:
-            motlin_client_id = context.bot_data['motlin_client_id']
-            motline_client_secret_key = \
-                context.bot_data['motlin_client_secret_key']
-            context.bot_data['motlin_access_token'] = get_token(
-                motlin_client_id,
-                motline_client_secret_key
-            )
 
 
 def main():

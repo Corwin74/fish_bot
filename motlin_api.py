@@ -1,6 +1,24 @@
 import requests
 
 
+def renew_access_token(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                args = list(args)
+                access_token = get_token(
+                    args[0].bot_data['motlin_client_id'],
+                    args[0].bot_data['motlin_client_secret_key']
+                )
+                args[0].bot_data['motlin_access_token'] = access_token
+                return func(*args, **kwargs)
+            else:
+                raise e
+    return wrapper
+
+
 def get_token(client_id, client_secret_key):
     request_body = {
         "client_id": client_id,
@@ -16,7 +34,9 @@ def get_token(client_id, client_secret_key):
     return response.json().get('access_token')
 
 
-def get_products(access_token):
+@renew_access_token
+def get_products(context):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         'https://api.moltin.com/catalog/products',
@@ -26,7 +46,9 @@ def get_products(access_token):
     return response.json()['data']
 
 
-def get_product_photo_link(access_token, image_id):
+@renew_access_token
+def get_product_photo_link(context, image_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         f'https://api.moltin.com/v2/files/{image_id}',
@@ -36,7 +58,9 @@ def get_product_photo_link(access_token, image_id):
     return response.json()['data']['link']['href']
 
 
-def get_product_stock(access_token, product_id):
+@renew_access_token
+def get_product_stock(context, product_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         f'https://api.moltin.com/v2/inventories/{product_id}',
@@ -46,7 +70,9 @@ def get_product_stock(access_token, product_id):
     return response.json()['data']
 
 
-def get_cart_cost(access_token, cart_id):
+@renew_access_token
+def get_cart_cost(context, cart_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f'https://api.moltin.com/v2/carts/{cart_id}'
     response = requests.get(url, headers=headers)
@@ -55,7 +81,9 @@ def get_cart_cost(access_token, cart_id):
     return display_price["with_tax"]["formatted"]
 
 
-def get_cart_items(access_token, cart_id):
+@renew_access_token
+def get_cart_items(context, cart_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f'https://api.moltin.com/v2/carts/{cart_id}/items'
     response = requests.get(url, headers=headers)
@@ -63,7 +91,9 @@ def get_cart_items(access_token, cart_id):
     return response.json()['data']
 
 
-def add_product_to_cart(access_token, product_sku, quantity, cart_id):
+@renew_access_token
+def add_product_to_cart(context, product_sku, quantity, cart_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
@@ -81,7 +111,9 @@ def add_product_to_cart(access_token, product_sku, quantity, cart_id):
     return response.json()['data']
 
 
-def remove_product_from_cart(access_token, cart_id, product_id):
+@renew_access_token
+def remove_product_from_cart(context, cart_id, product_id):
+    access_token = context.bot_data['motlin_access_token']
     response = requests.delete(
         f'https://api.moltin.com/v2/carts/{cart_id}/items/{product_id}',
         headers={"Authorization": f"Bearer {access_token}"},
@@ -90,7 +122,9 @@ def remove_product_from_cart(access_token, cart_id, product_id):
     return response.json()['data']
 
 
-def get_product(access_token, product_id):
+@renew_access_token
+def get_product(context, product_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         f'https://api.moltin.com/pcm/products/{product_id}',
@@ -100,7 +134,8 @@ def get_product(access_token, product_id):
     return response.json()['data']
 
 
-def get_first_pricebook(access_token):
+def _get_first_pricebook(context):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         'https://api.moltin.com/pcm/catalogs',
@@ -116,13 +151,16 @@ def get_first_pricebook(access_token):
     return response.json()['data']
 
 
-def get_product_price(access_token, product_sku):
-    for product in get_first_pricebook(access_token):
+@renew_access_token
+def get_product_price(context, product_sku):
+    for product in _get_first_pricebook(context):
         if product_sku == product['attributes']['sku']:
             return product['attributes']['currencies']
 
 
-def create_customer(access_token, email, name):
+@renew_access_token
+def create_customer(context, email, name):
+    access_token = context.bot_data['motlin_access_token']
     headers = {
         "Authorization": f"Bearer {access_token}",
     }
@@ -142,7 +180,9 @@ def create_customer(access_token, email, name):
     return response.json()['data']
 
 
-def get_customer(access_token, customer_id):
+@renew_access_token
+def get_customer(context, customer_id):
+    access_token = context.bot_data['motlin_access_token']
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         f'https://api.moltin.com/v2/customers/{customer_id}',
