@@ -9,11 +9,11 @@ from telegram.ext import (CommandHandler, ConversationHandler,
 
 from tlgm_logger import TlgmLogsHandler
 from motlin_api import (
-                        create_customer, get_cart_cost, get_cart_items,
-                        get_customer, get_products, get_token, get_product,
-                        get_product_price, get_product_stock,
-                        get_product_photo_link, add_product_to_cart,
-                        remove_product_from_cart,
+    create_customer, get_cart_cost, get_cart_items,
+    get_customer, get_products, get_token, get_product,
+    get_product_price, get_product_stock,
+    get_product_photo_link, add_product_to_cart,
+    remove_product_from_cart,
 )
 
 DISPLAY_MENU, HANDLE_MENU, HANDLE_PRODUCT, \
@@ -28,27 +28,27 @@ def display_menu(update, context):
     products = get_products(motlin_access_token)
     for product in products:
         keyboard.append(
-                        [
-                            InlineKeyboardButton(
-                                product['attributes']['name'],
-                                callback_data=product['id']
+            [
+                InlineKeyboardButton(
+                    product['attributes']['name'],
+                    callback_data=product['id']
                             )
-                        ]
-                        )
+            ]
+        )
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query:
         query = update.callback_query
         query.answer()
         query.delete_message()
         context.bot.send_message(
-                update['callback_query']['from_user']['id'],
-                'Please choose:',
-                reply_markup=reply_markup
+            update['callback_query']['from_user']['id'],
+            'Please choose:',
+            reply_markup=reply_markup
         )
     else:
         update.message.reply_text(
-                                'Сегодня в ассортименте:',
-                                reply_markup=reply_markup)
+            'Сегодня в ассортименте:',
+            reply_markup=reply_markup)
     return HANDLE_MENU
 
 
@@ -82,14 +82,14 @@ def handle_menu(update, context):
      ])
     query.delete_message()
     photo = get_product_photo_link(
-                        motlin_access_token,
-                        product["relationships"]["main_image"]["data"]['id']
+        motlin_access_token,
+        product["relationships"]["main_image"]["data"]['id']
     )
     context.bot.send_photo(
-                           chat_id=update['callback_query']['from_user']['id'],
-                           photo=photo,
-                           caption=product_page,
-                           reply_markup=reply_markup,
+        chat_id=update['callback_query']['from_user']['id'],
+        photo=photo,
+        caption=product_page,
+        reply_markup=reply_markup,
     )
     return HANDLE_PRODUCT
 
@@ -100,10 +100,10 @@ def handle_product(update, context):
     _, amount, product_sku = query['data'].split('_')
     client_id = query['from_user']['id']
     add_product_to_cart(
-                        motlin_access_token,
-                        product_sku,
-                        amount,
-                        client_id,
+        motlin_access_token,
+        product_sku,
+        amount,
+        client_id,
     )
     query.answer(f'Добавлено {amount}кг.')
     return HANDLE_PRODUCT
@@ -129,20 +129,20 @@ def handle_cart(update, context):
     if not query['data'] == 'cart':
         _, item_id = query['data'].split('_')
         remove_product_from_cart(
-                                 motlin_access_token,
-                                 client_id,
-                                 item_id
+            motlin_access_token,
+            client_id,
+            item_id
         )
     menu_buttons = []
     message_text = ""
     for item in get_cart_items(motlin_access_token, client_id):
         menu_buttons.append(
-                    [
-                        InlineKeyboardButton(
-                            f'{item["name"]} - удалить из корзины',
-                            callback_data=f'delete_{item["id"]}',
-                        )
-                    ]
+            [
+                InlineKeyboardButton(
+                    f'{item["name"]} - удалить из корзины',
+                    callback_data=f'delete_{item["id"]}',
+                )
+            ]
         )
         display_price = item["meta"]["display_price"]["with_tax"]
         message_text += f'{item["name"]}\n'\
@@ -162,9 +162,9 @@ def handle_cart(update, context):
         message_text = "Корзина пуста"
     reply_markup = InlineKeyboardMarkup(menu_buttons)
     context.bot.send_message(
-                             client_id,
-                             message_text,
-                             reply_markup=reply_markup,
+        client_id,
+        message_text,
+        reply_markup=reply_markup,
     )
     return HANDLE_CART
 
@@ -173,9 +173,9 @@ def handle_email(update, context):
     motlin_access_token = context.bot_data['motlin_access_token']
     message = update.message.to_dict()
     response = create_customer(
-                    motlin_access_token,
-                    message['text'],
-                    message['from']['username'],
+        motlin_access_token,
+        message['text'],
+        message['from']['username'],
     )
     email = get_customer(motlin_access_token, response['id'])['email']
     update.message.reply_text(
@@ -186,7 +186,7 @@ def handle_email(update, context):
 
 def wrong_email(update, context):
     update.message.reply_text(
-            'Неправильный формат email адреса. Попробуйте еще раз')
+        'Неправильный формат email адреса. Попробуйте еще раз')
     return WAITING_EMAIL
 
 
@@ -198,15 +198,15 @@ def error_handler(update, context):
             motline_client_secret_key = \
                 context.bot_data['motlin_client_secret_key']
             context.bot_data['motlin_access_token'] = get_token(
-                                                    motlin_client_id,
-                                                    motline_client_secret_key
-                                                               )
+                motlin_client_id,
+                motline_client_secret_key
+            )
 
 
 def main():
     logging.basicConfig(
-                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                level=logging.INFO
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO
     )
 
     env = Env()
@@ -219,9 +219,9 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.bot_data['motlin_access_token'] = get_token(
-                                                    motlin_client_id,
-                                                    motline_client_secret_key
-                                                          )
+        motlin_client_id,
+        motline_client_secret_key
+    )
     dispatcher.bot_data['motlin_client_id'] = motlin_client_id
     dispatcher.bot_data['motlin_client_secret_key'] = motline_client_secret_key
 
@@ -262,11 +262,11 @@ def main():
     )
     logger.setLevel(logging.INFO)
     logger.addHandler(TlgmLogsHandler(
-                                      updater.bot,
-                                      env('ADMIN_TLGM_CHAT_ID'),
-                                      formatter
-                                     )
-                      )
+        updater.bot,
+        env('ADMIN_TLGM_CHAT_ID'),
+        formatter
+        )
+    )
     dispatcher.add_error_handler(error_handler)
     updater.start_polling()
     updater.idle()
