@@ -105,7 +105,7 @@ def handle_product(update, context):
     return HANDLE_PRODUCT
 
 
-def cancel(update, context):
+def cancel(update, _):
     update.message.reply_text('До следующих встреч!')
     return ConversationHandler.END
 
@@ -146,7 +146,7 @@ def handle_cart(update, context):
     menu_buttons.append(
         [InlineKeyboardButton('В меню', callback_data='back')]
     )
-    if len(message_text):
+    if message_text:
         cart_cost = get_cart_cost(context, client_id)
         message_text += f'Общая сумма заказа: {cart_cost}\n'
         menu_buttons.append(
@@ -178,13 +178,13 @@ def handle_email(update, context):
     return ConversationHandler.END
 
 
-def wrong_email(update, context):
+def wrong_email(update, _):
     update.message.reply_text(
         'Неправильный формат email адреса. Попробуйте еще раз')
     return WAITING_EMAIL
 
 
-def error_handler(update, context):
+def error_handler(_, context):
     logger.exception('Exception', exc_info=context.error)
 
 
@@ -207,6 +207,7 @@ def main():
         motlin_client_id,
         motline_client_secret_key
     )
+
     dispatcher.bot_data['motlin_client_id'] = motlin_client_id
     dispatcher.bot_data['motlin_client_secret_key'] = motline_client_secret_key
 
